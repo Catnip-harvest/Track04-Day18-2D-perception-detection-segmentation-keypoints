@@ -1,0 +1,77 @@
+{
+  "cpu": "x86_64 · 4 luồng",
+  "rows": [
+    {
+      "Runtime": "ONNX Runtime CPU",
+      "Cấu hình": "one-to-many + NMS, conf 0.25",
+      "preprocess (ms)": 4.14,
+      "inference (ms)": 48.87,
+      "postprocess (ms)": 1.64,
+      "số box": 5,
+      "tổng (ms)": 54.65
+    },
+    {
+      "Runtime": "ONNX Runtime CPU",
+      "Cấu hình": "one-to-one NMS-free, conf 0.25",
+      "preprocess (ms)": 3.69,
+      "inference (ms)": 47.13,
+      "postprocess (ms)": 0.42,
+      "số box": 5,
+      "tổng (ms)": 51.24
+    },
+    {
+      "Runtime": "PyTorch CPU",
+      "Cấu hình": "one-to-many + NMS, conf 0.25",
+      "preprocess (ms)": 3.16,
+      "inference (ms)": 62.92,
+      "postprocess (ms)": 1.18,
+      "số box": 5,
+      "tổng (ms)": 67.26
+    },
+    {
+      "Runtime": "PyTorch CPU",
+      "Cấu hình": "one-to-one NMS-free, conf 0.25",
+      "preprocess (ms)": 3.08,
+      "inference (ms)": 63.49,
+      "postprocess (ms)": 0.35,
+      "số box": 5,
+      "tổng (ms)": 66.92
+    },
+    {
+      "Runtime": "ONNX Runtime CPU",
+      "Cấu hình": "one-to-many + NMS, conf 0.001",
+      "preprocess (ms)": 3.67,
+      "inference (ms)": 46.14,
+      "postprocess (ms)": 2.16,
+      "số box": 186,
+      "tổng (ms)": 51.97
+    },
+    {
+      "Runtime": "ONNX Runtime CPU",
+      "Cấu hình": "one-to-one NMS-free, conf 0.001",
+      "preprocess (ms)": 3.95,
+      "inference (ms)": 50.53,
+      "postprocess (ms)": 0.5,
+      "số box": 177,
+      "tổng (ms)": 54.98
+    },
+    {
+      "Runtime": "PyTorch CPU",
+      "Cấu hình": "one-to-many + NMS, conf 0.001",
+      "preprocess (ms)": 3.21,
+      "inference (ms)": 63.2,
+      "postprocess (ms)": 1.95,
+      "số box": 203,
+      "tổng (ms)": 68.36
+    },
+    {
+      "Runtime": "PyTorch CPU",
+      "Cấu hình": "one-to-one NMS-free, conf 0.001",
+      "preprocess (ms)": 3.26,
+      "inference (ms)": 65.2,
+      "postprocess (ms)": 0.37,
+      "số box": 204,
+      "tổng (ms)": 68.83
+    }
+  ]
+}

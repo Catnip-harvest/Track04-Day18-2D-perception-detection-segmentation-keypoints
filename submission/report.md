@@ -1,0 +1,74 @@
+# Báo cáo Lab 18 — 2D Perception (Track 4)
+
+**Học viên:** Hoàng Quốc Việt — 2A202602563
+
+Link notebook đã chạy: https://github.com/Catnip-harvest/Track04-Day18-2D-perception-detection-segmentation-keypoints/blob/main/lab_2d_perception_student.ipynb
+
+(Bản xem dự phòng nếu GitHub không hiển thị được notebook vì dung lượng ảnh: https://nbviewer.org/github/Catnip-harvest/Track04-Day18-2D-perception-detection-segmentation-keypoints/blob/main/lab_2d_perception_student.ipynb)
+
+## Môi trường chạy
+
+Notebook được chạy từ đầu đến cuối một lần, không ô nào lỗi (tương đương *Restart session and run all*), trên GPU **Tesla T4** của Kaggle:
+`torch 2.11.0+cu128 · torchvision 0.26.0 · ultralytics 8.4.171 · device = cuda`. Phần 4 train đủ **40 epoch, imgsz 640**.
+`ket_qua.json` là file do ô `final_report()` sinh ra.
+
+| Hạng mục | Kết quả |
+|---|---|
+| 6 hàm tự cài đặt, `polygon_to_mask` + `mask_to_yolo_seg`, `FLIP_IDX` | tất cả ✅ (không dùng phao) |
+| 1C — latency | đủ 4 cấu hình; NMS của tôi và Ultralytics cùng giữ 5 box (4 người, 1 xe buýt) |
+| 2C — `autolabel/bus.txt` | 5 object, round-trip IoU 0.967–0.983 |
+| 4B — tiger-pose val | Box mAP50-95 0.914 · Pose mAP50 0.995 · Pose mAP50-95 0.436 · train 3.6 phút |
+| Câu hỏi | 12/12 |
+| ⭐ 1D `average_precision` | ✅, AP = 0.535 trên ví dụ slide, có hình đường PR |
+| ⭐ 4C | bảng 2 model × 2 tập val, giải thích bên dưới |
+| ⭐ Bài tập về nhà | lựa chọn 3: export ONNX và đo latency CPU, báo cáo bên dưới |
+
+## ⭐ 4C — Tập val lật gương: metric nào đã che lỗi `flip_idx`?
+
+| Model | Pose mAP50-95 — val gốc | Pose mAP50-95 — val lật gương |
+|---|---:|---:|
+| `flip_idx` giải phẫu | 0.436 | 0.425 |
+| `flip_idx` đồng nhất | 0.415 | 0.275 |
+
+Trên **val gốc**, hai model gần như ngang nhau (0.436 so với 0.415), và Pose mAP50 của cả hai đều là 0.995. Nhìn các con số này thì
+không thấy có bug. Trên **val lật gương** (ảnh lật ngang, nhãn đổi theo quy ước giải phẫu, giả lập hổ quay trái), model giải phẫu gần
+như giữ nguyên (−0.011), còn model đồng nhất tụt từ 0.415 xuống 0.275, mất khoảng một phần ba. Pose mAP50 của model này cũng rơi
+từ 0.995 xuống 0.877.
+
+Thứ che lỗi không phải công thức mAP mà là **tập val có cùng phân phối với tập train**. Mọi con hổ trong train (210/0) và val (53/0) đều
+quay phải, nên quy ước sai "chân phía camera luôn là `right_*`" vẫn được chấm là đúng. Pose mAP50 còn che kỹ hơn vì đã bão hoà ở 0.995
+cho cả hai model; chỉ mAP50-95 trên một tập val đổi hướng mới lộ ra khoảng cách. Nếu thiết kế lại tập val, tôi sẽ:
+
+1. thêm ảnh hổ quay trái (hoặc bản lật gương đã đổi nhãn đúng), phân tầng theo hướng quay;
+2. chia train/val theo đoạn video thay vì theo khung hình (Frame_17 và Frame_18 trong val gần như trùng nhau);
+3. báo cáo kèm tỉ lệ đảo trái/phải và sai số theo từng keypoint, không chỉ một con số mAP.
+
+## ⭐ Bài tập về nhà (lựa chọn 3) — Export ONNX và đo latency trên CPU
+
+**Cách làm** (ô cuối notebook, trước phần Tổng kết): export `yolo26n.pt` sang ONNX hai lần bằng `model.export(format="onnx", imgsz=640, device="cpu", nms=...)`.
+`nms=None` (mặc định) giữ head **one-to-many** và để NMS chạy ngoài model. `nms=False` export head **one-to-one** (end2end, output `(1, 300, 6)`,
+không cần NMS). Đo bằng hàm `bench` của 1C (warm-up + trung bình 30 lần) trên `bus.jpg`, ONNX Runtime 1.30.0 với `CPUExecutionProvider`,
+CPU Intel Xeon @ 2.00 GHz, 4 luồng. Thêm 4 dòng PyTorch-CPU để so sánh. Số liệu thô lưu ở `submission/onnx_latency.json`.
+
+| Runtime | Cấu hình | preprocess (ms) | inference (ms) | postprocess (ms) | số box | tổng (ms) |
+|---|---|---:|---:|---:|---:|---:|
+| ONNX Runtime CPU | one-to-many + NMS, conf 0.25 | 4.14 | 48.87 | 1.64 | 5 | 54.65 |
+| ONNX Runtime CPU | one-to-one NMS-free, conf 0.25 | 3.69 | 47.13 | 0.42 | 5 | 51.24 |
+| ONNX Runtime CPU | one-to-many + NMS, conf 0.001 | 3.67 | 46.14 | 2.16 | 186 | 51.97 |
+| ONNX Runtime CPU | one-to-one NMS-free, conf 0.001 | 3.95 | 50.53 | 0.50 | 177 | 54.98 |
+| PyTorch CPU | one-to-many + NMS, conf 0.25 | 3.16 | 62.92 | 1.18 | 5 | 67.26 |
+| PyTorch CPU | one-to-one NMS-free, conf 0.25 | 3.08 | 63.49 | 0.35 | 5 | 66.92 |
+| PyTorch CPU | one-to-many + NMS, conf 0.001 | 3.21 | 63.20 | 1.95 | 203 | 68.36 |
+| PyTorch CPU | one-to-one NMS-free, conf 0.001 | 3.26 | 65.20 | 0.37 | 204 | 68.83 |
+
+**Nhận xét.**
+
+- **ONNX Runtime nhanh hơn PyTorch khoảng 25% ở phần inference** (46–51 ms so với 63–65 ms) trên cùng CPU. Đây là phần chiếm hơn 90% tổng thời gian.
+- **Postprocess đúng như lý thuyết:** NMS của head one-to-many tăng từ 1.64 ms lên 2.16 ms khi hạ conf từ 0.25 xuống 0.001, vì có ~186 box ứng viên.
+  Head one-to-one giữ 0.42–0.50 ms ở cả hai mức, nên ở conf 0.001 tiết kiệm khoảng 4 lần cho riêng bước này. PyTorch cho cùng xu hướng (1.18 → 1.95 ms so với ~0.36 ms).
+- **Nhưng trên một ảnh 5 người thì tổng thời gian không phân định được hai head.** Ở conf 0.25 one-to-one nhanh hơn 3.4 ms; ở conf 0.001 lại chậm hơn 3.0 ms.
+  Độ dao động của inference giữa các lần đo (±2–4 ms) lớn hơn phần NMS tiết kiệm được (~1.2–1.7 ms). Trên CPU này, với cảnh thưa, lợi ích chính của
+  NMS-free là latency ổn định, không phụ thuộc số box, và export end-to-end gọn (không phải viết lại NMS ở runtime đích). Phần ms tiết kiệm chỉ rõ
+  khi cảnh đông hoặc conf thấp đẩy số ứng viên lên hàng nghìn, hoặc trên NPU, nơi NMS phải quay về CPU host.
+- **Số box ở conf 0.001 khác PyTorch** (186/177 so với 203/204). File ONNX export với input cố định 640×640 nên ảnh được pad thành hình vuông (8400 vị trí),
+  còn PyTorch letterbox chữ nhật 640×480 (6300 vị trí, như Q1). Đầu vào khác nhau thì tập box ở ngưỡng rất thấp cũng khác. Ở conf 0.25 cả hai đều ra đúng 5 box.
