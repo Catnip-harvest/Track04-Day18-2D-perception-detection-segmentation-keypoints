@@ -16,3 +16,6 @@ __pycache__/
 .ipynb_checkpoints/
 .venv*/
 .DS_Store
+
+# Bài nộp: giữ nhãn auto-label trong submission/
+!submission/autolabel/
