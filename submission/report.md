@@ -17,7 +17,7 @@ Notebook được chạy từ đầu đến cuối một lần, không ô nào l
 | 6 hàm tự cài đặt, `polygon_to_mask` + `mask_to_yolo_seg`, `FLIP_IDX` | tất cả ✅ (không dùng phao) |
 | 1C — latency | đủ 4 cấu hình; NMS của tôi và Ultralytics cùng giữ 5 box (4 người, 1 xe buýt) |
 | 2C — `autolabel/bus.txt` | 5 object, round-trip IoU 0.967–0.983 |
-| 4B — tiger-pose val | Box mAP50-95 0.914 · Pose mAP50 0.995 · Pose mAP50-95 0.436 · train 3.6 phút |
+| 4B — tiger-pose val | Box mAP50-95 0.914 · Pose mAP50 0.995 · Pose mAP50-95 0.436 · train 3.9 phút |
 | Câu hỏi | 12/12 |
 | ⭐ 1D `average_precision` | ✅, AP = 0.535 trên ví dụ slide, có hình đường PR |
 | ⭐ 4C | bảng 2 model × 2 tập val, giải thích bên dưới |
@@ -52,23 +52,26 @@ CPU Intel Xeon @ 2.00 GHz, 4 luồng. Thêm 4 dòng PyTorch-CPU để so sánh. 
 
 | Runtime | Cấu hình | preprocess (ms) | inference (ms) | postprocess (ms) | số box | tổng (ms) |
 |---|---|---:|---:|---:|---:|---:|
-| ONNX Runtime CPU | one-to-many + NMS, conf 0.25 | 4.14 | 48.87 | 1.64 | 5 | 54.65 |
-| ONNX Runtime CPU | one-to-one NMS-free, conf 0.25 | 3.69 | 47.13 | 0.42 | 5 | 51.24 |
-| ONNX Runtime CPU | one-to-many + NMS, conf 0.001 | 3.67 | 46.14 | 2.16 | 186 | 51.97 |
-| ONNX Runtime CPU | one-to-one NMS-free, conf 0.001 | 3.95 | 50.53 | 0.50 | 177 | 54.98 |
-| PyTorch CPU | one-to-many + NMS, conf 0.25 | 3.16 | 62.92 | 1.18 | 5 | 67.26 |
-| PyTorch CPU | one-to-one NMS-free, conf 0.25 | 3.08 | 63.49 | 0.35 | 5 | 66.92 |
-| PyTorch CPU | one-to-many + NMS, conf 0.001 | 3.21 | 63.20 | 1.95 | 203 | 68.36 |
-| PyTorch CPU | one-to-one NMS-free, conf 0.001 | 3.26 | 65.20 | 0.37 | 204 | 68.83 |
+| ONNX Runtime CPU | one-to-many + NMS, conf 0.25 | 3.94 | 75.01 ⚠️ | 1.59 | 5 | 80.54 |
+| ONNX Runtime CPU | one-to-one NMS-free, conf 0.25 | 3.85 | 49.67 | 0.44 | 5 | 53.96 |
+| ONNX Runtime CPU | one-to-many + NMS, conf 0.001 | 3.90 | 45.88 | 2.18 | 186 | 51.96 |
+| ONNX Runtime CPU | one-to-one NMS-free, conf 0.001 | 4.30 | 46.37 | 0.44 | 177 | 51.11 |
+| PyTorch CPU | one-to-many + NMS, conf 0.25 | 3.09 | 61.57 | 1.07 | 5 | 65.73 |
+| PyTorch CPU | one-to-one NMS-free, conf 0.25 | 2.80 | 58.16 | 0.29 | 5 | 61.25 |
+| PyTorch CPU | one-to-many + NMS, conf 0.001 | 3.15 | 63.17 | 1.97 | 203 | 68.29 |
+| PyTorch CPU | one-to-one NMS-free, conf 0.001 | 3.13 | 63.10 | 0.34 | 204 | 66.57 |
 
 **Nhận xét.**
 
-- **ONNX Runtime nhanh hơn PyTorch khoảng 25% ở phần inference** (46–51 ms so với 63–65 ms) trên cùng CPU. Đây là phần chiếm hơn 90% tổng thời gian.
-- **Postprocess đúng như lý thuyết:** NMS của head one-to-many tăng từ 1.64 ms lên 2.16 ms khi hạ conf từ 0.25 xuống 0.001, vì có ~186 box ứng viên.
-  Head one-to-one giữ 0.42–0.50 ms ở cả hai mức, nên ở conf 0.001 tiết kiệm khoảng 4 lần cho riêng bước này. PyTorch cho cùng xu hướng (1.18 → 1.95 ms so với ~0.36 ms).
-- **Nhưng trên một ảnh 5 người thì tổng thời gian không phân định được hai head.** Ở conf 0.25 one-to-one nhanh hơn 3.4 ms; ở conf 0.001 lại chậm hơn 3.0 ms.
-  Độ dao động của inference giữa các lần đo (±2–4 ms) lớn hơn phần NMS tiết kiệm được (~1.2–1.7 ms). Trên CPU này, với cảnh thưa, lợi ích chính của
-  NMS-free là latency ổn định, không phụ thuộc số box, và export end-to-end gọn (không phải viết lại NMS ở runtime đích). Phần ms tiết kiệm chỉ rõ
-  khi cảnh đông hoặc conf thấp đẩy số ứng viên lên hàng nghìn, hoặc trên NPU, nơi NMS phải quay về CPU host.
+- **Dòng ⚠️ là một đợt nhiễu đo, không phải đặc tính của head.** Inference không phụ thuộc conf (conf chỉ lọc sau khi mạng chạy xong), mà cùng file ONNX one-to-many
+  ở conf 0.001 chỉ mất 45.88 ms. Máy ảo Kaggle dùng chung CPU nên một đợt bị chiếm tài nguyên đẩy trung bình 30 lần lên 75 ms. Tôi giữ nguyên số đo trong
+  notebook thay vì chạy lại cho đẹp, và không dùng dòng này để kết luận.
+- **ONNX Runtime nhanh hơn PyTorch khoảng 20–25% ở phần inference** (46–50 ms so với 58–63 ms) trên cùng CPU. Đây là phần chiếm hơn 90% tổng thời gian.
+- **Postprocess đúng như lý thuyết:** NMS của head one-to-many tăng từ 1.59 ms lên 2.18 ms khi hạ conf từ 0.25 xuống 0.001, vì có ~186 box ứng viên.
+  Head one-to-one giữ 0.44 ms ở cả hai mức, nên ở conf 0.001 nhanh hơn khoảng 5 lần cho riêng bước này. PyTorch cho cùng xu hướng (1.07 → 1.97 ms so với 0.29–0.34 ms).
+- **Trên tổng thời gian, lợi ích NMS-free có thật nhưng nhỏ với cảnh thưa:** ở conf 0.001 one-to-one nhanh hơn 0.85 ms (ONNX) và 1.7 ms (PyTorch), khoảng 2–3%
+  tổng thời gian, nhỏ hơn cả độ dao động của inference giữa các lần đo. Trên CPU này, với một ảnh 5 người, giá trị chính của NMS-free là latency ổn định, không phụ thuộc
+  số box, và export end-to-end gọn (không phải viết lại NMS ở runtime đích). Phần ms tiết kiệm chỉ lớn khi cảnh đông hoặc conf thấp đẩy số ứng viên lên hàng nghìn,
+  hoặc trên NPU, nơi NMS phải quay về CPU host.
 - **Số box ở conf 0.001 khác PyTorch** (186/177 so với 203/204). File ONNX export với input cố định 640×640 nên ảnh được pad thành hình vuông (8400 vị trí),
   còn PyTorch letterbox chữ nhật 640×480 (6300 vị trí, như Q1). Đầu vào khác nhau thì tập box ở ngưỡng rất thấp cũng khác. Ở conf 0.25 cả hai đều ra đúng 5 box.

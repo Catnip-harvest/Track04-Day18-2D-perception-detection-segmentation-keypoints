@@ -15,30 +15,30 @@
   "latency": [
     {
       "Cấu hình": "one-to-many + NMS, conf 0.25",
-      "preprocess (ms)": 1.74,
-      "inference (ms)": 9.54,
-      "postprocess (ms)": 1.33,
+      "preprocess (ms)": 1.97,
+      "inference (ms)": 10.34,
+      "postprocess (ms)": 1.43,
       "số box": 5
     },
     {
       "Cấu hình": "one-to-many + NMS, conf 0.001",
-      "preprocess (ms)": 1.71,
-      "inference (ms)": 9.38,
-      "postprocess (ms)": 1.53,
+      "preprocess (ms)": 1.99,
+      "inference (ms)": 10.36,
+      "postprocess (ms)": 1.68,
       "số box": 203
     },
     {
       "Cấu hình": "one-to-one NMS-free, conf 0.25",
-      "preprocess (ms)": 1.77,
-      "inference (ms)": 10.06,
-      "postprocess (ms)": 0.49,
+      "preprocess (ms)": 1.95,
+      "inference (ms)": 10.84,
+      "postprocess (ms)": 0.54,
       "số box": 5
     },
     {
       "Cấu hình": "one-to-one NMS-free, conf 0.001",
-      "preprocess (ms)": 1.72,
-      "inference (ms)": 9.76,
-      "postprocess (ms)": 0.48,
+      "preprocess (ms)": 1.94,
+      "inference (ms)": 10.75,
+      "postprocess (ms)": 0.54,
       "số box": 204
     }
   ],
@@ -49,7 +49,7 @@
     "Box mAP50-95": 0.9139528301886793,
     "Pose mAP50": 0.995,
     "Pose mAP50-95": 0.4357436046254029,
-    "train (phút)": 3.6
+    "train (phút)": 3.9
   },
   "result_4c": [
     {
@@ -65,7 +65,7 @@
   ],
   "answers": {
     "Q1": "(a) bus.jpg letterbox về 640×480 (auto=True chỉ pad tới bội số của 32, không pad thành hình vuông), nên ba tầng stride 8/16/32 có lưới 80×60, 40×30, 20×15 → 4800 + 1200 + 300 = 6300 dự đoán thô; ô trên in đúng (1, 84, 6300). Ít hơn 8400 (= 80² + 40² + 20²) vì chiều cao vào chỉ 480 chứ không phải 640: số dự đoán tỉ lệ với diện tích ảnh sau letterbox, không liên quan số người trong ảnh.\n(b) Box bị đẩy sang phải và xuống dưới đúng nửa (w, h) nghĩa là chỗ đáng lẽ là TÂM lại bị vẽ như GÓC TRÊN-TRÁI: nhãn gốc ở quy ước cxcywh (tâm + kích thước, kiểu YOLO .txt) nhưng bị đọc như xywh (góc trên-trái + kích thước, kiểu COCO). Ô minh hoạ ở trên là chiều ngược lại (xywh đọc nhầm thành cxcywh) nên box đỏ lệch sang trái và lên trên.",
-    "Q2": "Trong bảng của tôi (T4, trung bình 30 lần) cột preprocess (1.71–1.77 ms) và inference (9.38–10.06 ms) gần như bằng nhau giữa hai head; cột thay đổi nhiều nhất là postprocess: one-to-many + NMS mất 1.33 ms ở conf 0.25 và 1.53 ms ở conf 0.001, còn one-to-one NMS-free giữ 0.49 / 0.48 ms ở cả hai mức. Chênh lệch lớn nhất ở conf 0.001 (1.53 so với 0.48 ms, gấp ~3.2 lần), nơi có khoảng 200 box (203 / 204) đi vào bước hậu xử lý.\nNMS là thuật toán tham lam, tuần tự, chi phí tăng theo số box ứng viên (tới O(n²) phép IoU), nên conf thấp (lúc tính mAP) và cảnh đông người đều làm số ứng viên tăng vọt, trong khi head one-to-one chỉ là top-k cố định. Trên GPU phần chênh này nhỏ so với tổng ~12–13 ms, nhưng trên CPU/NPU thì NMS thường không chạy được trên bộ tăng tốc (vòng lặp phụ thuộc dữ liệu, kích thước output thay đổi) và phải về CPU host, làm latency vừa cao hơn vừa dao động; bỏ NMS cho latency ổn định và dễ export end-to-end.",
+    "Q2": "Trong bảng của tôi (T4, trung bình 30 lần) cột preprocess (1.94–1.99 ms) và inference (10.34–10.84 ms) gần như bằng nhau giữa hai head; cột thay đổi nhiều nhất là postprocess: one-to-many + NMS mất 1.43 ms ở conf 0.25 và 1.68 ms ở conf 0.001, còn one-to-one NMS-free giữ 0.54 ms ở cả hai mức. Chênh lệch lớn nhất ở conf 0.001 (1.68 so với 0.54 ms, gấp ~3.1 lần), nơi có khoảng 200 box (203 / 204) đi vào bước hậu xử lý.\nNMS là thuật toán tham lam, tuần tự, chi phí tăng theo số box ứng viên (tới O(n²) phép IoU), nên conf thấp (lúc tính mAP) và cảnh đông người đều làm số ứng viên tăng vọt, trong khi head one-to-one chỉ là top-k cố định. Trên GPU phần chênh này nhỏ so với tổng ~13–14 ms, nhưng trên CPU/NPU thì NMS thường không chạy được trên bộ tăng tốc (vòng lặp phụ thuộc dữ liệu, kích thước output thay đổi) và phải về CPU host, làm latency vừa cao hơn vừa dao động; bỏ NMS cho latency ổn định và dễ export end-to-end.",
     "Q3": "(a) IoU 0.75 > 0.7 nên NMS coi box điểm thấp hơn là duplicate và xoá nó: camera đếm thiếu một công nhân. Tăng ngưỡng (ví dụ 0.8) giữ được hai người đứng sát nhau nhưng để lọt nhiều duplicate của cùng một người (đếm thừa); giảm ngưỡng thì dọn duplicate sạch hơn nhưng nuốt thêm người đứng gần nhau. Không có ngưỡng nào đúng cho mọi cảnh vì NMS chỉ nhìn hình học, không biết hai box là một hay hai object.\n(b) Head one-to-one chỉ có một mẫu dương cho mỗi object nên tín hiệu học rất thưa, hội tụ chậm và kém. Head one-to-many gán nhiều vị trí dương cho mỗi object, cho gradient dày giúp backbone và neck (dùng chung) học đặc trưng tốt hơn; lúc suy luận head này bị bỏ đi nên không tốn thêm chi phí. Ở 1C hai cách cho cùng kết quả 5 box (4 người, 1 xe buýt).",
     "Q4": "(a) Bản đồ semantic của tôi cho 8 vùng liên thông 'person' (diện tích 106186, 20307, 1241 px và 5 mảnh vụn 3–17 px) trong khi ảnh có 4 người, Mask R-CNN đếm đúng 4. Đếm thiếu: những người đứng sát/che nhau dính thành một vùng (vùng 106186 px bên trái chứa nhiều người). Đếm thừa: một người bị vật che cắt đôi, hoặc nhiễu biên tạo mảnh vụn (vùng 1241 px và các mảnh vài pixel). Panoptic segmentation gán cho mỗi pixel cả class lẫn instance id với các class \"things\" (người, xe) và chỉ class cho \"stuff\" (đường, trời), nên đếm người = đếm số id, không phụ thuộc pixel có liền nhau hay không.\n(b) Semantic gán phần lớn xe buýt vào class 'train' (63% pixel trong box 'bus' của detector, 31% toàn ảnh; 23% là 'person' vì người đứng trước xe). YOLO26n-sem train trên Cityscapes (19 class) gồm cảnh đường phố Đức nhìn từ xe, nơi 'train' chủ yếu là tàu điện chạy trên đường phố: thân dài, cửa kính lớn, sơn màu giống chiếc xe buýt điện này, còn xe buýt chụp cận cảnh từ vỉa hè thì hiếm. Đây là domain shift của model có sẵn, không phải lỗi code.",
     "Q5": "(a) YOLO26-seg ghép mask từ 32 prototype chung ở 1/4 độ phân giải ảnh vào (160×160 với ảnh 640), nên object NHỎ chỉ phủ vài pixel prototype và có biên thô; object lớn có nhiều pixel prototype hơn nên biên ổn. Mask R-CNN luôn dự đoán lưới 28×28 cho mỗi RoI rồi phóng lên kích thước box, nên object LỚN (như xe buýt cao vài trăm pixel) bị phóng 28 ô lên hàng trăm pixel, biên răng cưa; object nhỏ thì 28×28 là đủ mịn. Bảng ghép của tôi có mask IoU 0.842–0.939, tức hai model đồng thuận cao nhưng không trùng khít ở biên.\n(b) Ghép tham lam \"mỗi mask YOLO lấy mask Mask R-CNN IoU cao nhất\" không bắt buộc 1–1: hai mask YOLO (ví dụ hai người đứng sát nhau, hoặc người đứng trước xe buýt) có thể cùng chọn một mask Mask R-CNN, một mask khác bị bỏ trống, và kết quả phụ thuộc thứ tự duyệt. Hungarian matching tối ưu tổng IoU toàn cục với ràng buộc mỗi mask chỉ được ghép một lần; trong thực tế nên thêm ngưỡng IoU tối thiểu để không ghép những cặp quá kém.",
